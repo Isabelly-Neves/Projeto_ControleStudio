@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block titulo %}Furo Delicado{% endblock %}</title>
+  <style>
+    :root { color-scheme: light dark; }
+    body { font-family: system-ui, sans-serif; max-width: 28rem; margin: 0 auto; padding: 1rem; line-height: 1.5; }
+    nav { display: flex; gap: 1.25rem; padding-bottom: .75rem; margin-bottom: 1.25rem; border-bottom: 1px solid #8886; }
+    nav a { color: inherit; font-weight: 600; text-decoration: none; }
+    h1 { font-size: 1.4rem; margin: 0 0 1.25rem; }
+    .linha { display: flex; justify-content: space-between; gap: 1rem; padding: .75rem 0; border-bottom: 1px solid #8884; }
+    .discreto { color: #888; font-size: .9rem; }
+    .valor { font-weight: 600; white-space: nowrap; }
+    .botao { display: inline-block; padding: .7rem 1rem; border: 0; border-radius: .5rem; background: #2b6cb0; color: #fff; font-size: 1rem; font-weight: 600; text-decoration: none; cursor: pointer; }
+    label { display: block; margin-top: 1rem; font-weight: 600; }
+    input, select { width: 100%; box-sizing: border-box; margin-top: .25rem; padding: .7rem; font-size: 1rem; }
+    .erro { padding: .75rem; border-radius: .5rem; background: #c5303022; border: 1px solid #c53030; }
+  </style>
+</head>
+<body>
+  <nav>
+    <a href="{{ url_for('resumo') }}">Resumo</a>
+    <a href="{{ url_for('saidas') }}">Saídas</a>
+  </nav>
+  {% block conteudo %}{% endblock %}
+</body>
+</html>
