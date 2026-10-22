@@ -20,7 +20,7 @@ CATEGORIAS = [
     ("Outros", "saida"),
 ]
 
-SERVICOS_PERFURACAO = ["Lóbulo", "Umbigo", "Peito", "Aba Nasal","Hélix", "Conch","Tragus", "Rook", "Daith", "Australianos", "Flat", "Minion", "Outros"]
+SERVICOS_PERFURACAO = ["Lóbulo", "Umbigo", "Peito", "Aba Nasal","Hélix", "Conch","Tragus", "Rook", "Daith", "Australianos", "Flat", "Minion", "Anti-Hélix", "Outros"]
 
 
 def main():
