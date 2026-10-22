@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Furo Delicado: resumo do mês</title>
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 28rem; margin: 0 auto; padding: 1.5rem 1rem; line-height: 1.5; }
+    h1 { font-size: 1.4rem; margin: 0 0 1.25rem; }
+    dl { margin: 0; }
+    .linha { display: flex; justify-content: space-between; padding: .75rem 0; border-bottom: 1px solid #8884; }
+    dt { color: #666; }
+    dd { margin: 0; font-weight: 600; }
+    .lucro dd { font-size: 1.25rem; }
+  </style>
+</head>
+<body>
+  <h1>Resumo de {{ mes }}</h1>
+  <dl>
+    <div class="linha"><dt>Entrou</dt><dd>{{ entrou | brl }}</dd></div>
+    <div class="linha"><dt>Saiu</dt><dd>{{ saiu | brl }}</dd></div>
+    <div class="linha lucro"><dt>Lucro</dt><dd>{{ lucro | brl }}</dd></div>
+  </dl>
+</body>
+</html>
