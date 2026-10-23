@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block titulo %}Furo Delicado: atendimentos{% endblock %}
+{% block conteudo %}
+  <h1>Atendimentos</h1>
+  <p><a class="botao" href="{{ url_for('atendimento_novo') }}">Lançar atendimento</a></p>
+  {% for a in atendimentos %}
+    <div class="linha">
+      <div>
+        {{ a.cliente or "Sem nome" }}
+        <div class="discreto">{{ a.itens }}</div>
+        <div class="discreto">
+          {{ a.data | data_br }} · {{ formas[a.forma_pagamento] }}{% if a.agendado_por %} · agendado por {{ a.agendado_por }}{% endif %}
+        </div>
+        {% if a.total != a.recebido_centavos %}
+          <div class="discreto">Taxa da maquininha: {{ (a.total - a.recebido_centavos) | brl }}</div>
+        {% endif %}
+      </div>
+      <div style="text-align: right">
+        <span class="valor">{{ a.recebido_centavos | brl }}</span>
+        {% if a.total != a.recebido_centavos %}
+          <div class="discreto">de {{ a.total | brl }}</div>
+        {% endif %}
+      </div>
+    </div>
+  {% else %}
+    <p class="discreto">Nenhum atendimento lançado ainda. Use o botão acima para registrar o primeiro.</p>
+  {% endfor %}
+{% endblock %}

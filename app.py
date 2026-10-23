@@ -119,3 +119,147 @@ def saida_nova():
             return redirect(url_for("saidas"))
 
     return render_template("saida_nova.html", categorias=categorias, form=form, erro=erro)
+
+
+FORMAS_PAGAMENTO = [
+    ("pix", "Pix"),
+    ("dinheiro", "Dinheiro"),
+    ("credito", "Cartão de crédito"),
+    ("debito", "Cartão de débito"),
+]
+
+
+def opcoes_de_itens(db):
+    """O que pode ser cobrado em um atendimento: cada serviço (com sua categoria)
+    e cada categoria de entrada que não tem serviços (ex.: Venda de joia)."""
+    opcoes = []
+    servicos = db.execute(
+        "SELECT s.id, s.nome, c.id AS categoria_id, c.nome AS categoria "
+        "FROM servicos s JOIN categorias c ON c.id = s.categoria_id "
+        "WHERE c.tipo = 'entrada'"
+    ).fetchall()
+    for s in servicos:
+        opcoes.append({
+            "valor": f"s:{s['id']}",
+            "rotulo": f"{s['categoria']}: {s['nome']}",
+            "categoria_id": s["categoria_id"],
+            "servico_id": s["id"],
+        })
+    categorias = db.execute(
+        "SELECT id, nome FROM categorias "
+        "WHERE tipo = 'entrada' AND id NOT IN (SELECT categoria_id FROM servicos)"
+    ).fetchall()
+    for c in categorias:
+        opcoes.append({
+            "valor": f"c:{c['id']}",
+            "rotulo": c["nome"],
+            "categoria_id": c["id"],
+            "servico_id": None,
+        })
+    return sorted(opcoes, key=lambda o: o["rotulo"])
+
+
+@app.route("/atendimentos")
+def atendimentos():
+    linhas = get_db().execute(
+        "SELECT a.id, a.data, a.cliente, a.forma_pagamento, a.recebido_centavos, "
+        "       a.agendado_por, a.descricao, "
+        "       SUM(i.valor_centavos) AS total, "
+        "       GROUP_CONCAT(COALESCE(s.nome, c.nome), ', ') AS itens "
+        "FROM atendimentos a "
+        "JOIN itens_atendimento i ON i.atendimento_id = a.id "
+        "JOIN categorias c ON c.id = i.categoria_id "
+        "LEFT JOIN servicos s ON s.id = i.servico_id "
+        "GROUP BY a.id "
+        "ORDER BY a.data DESC, a.id DESC LIMIT 50"
+    ).fetchall()
+    return render_template("atendimentos.html", atendimentos=linhas, formas=dict(FORMAS_PAGAMENTO))
+
+
+@app.route("/atendimentos/novo", methods=["GET", "POST"])
+def atendimento_novo():
+    db = get_db()
+    opcoes = opcoes_de_itens(db)
+    por_valor = {o["valor"]: o for o in opcoes}
+    pessoas = [
+        r[0] for r in db.execute(
+            "SELECT DISTINCT agendado_por FROM atendimentos "
+            "WHERE agendado_por IS NOT NULL ORDER BY agendado_por"
+        )
+    ]
+
+    form = {
+        "data": date.today().isoformat(), "cliente": "", "forma_pagamento": "pix",
+        "recebido": "", "agendado_por": "", "descricao": "",
+    }
+    linhas = [{"item": "", "valor": ""}]
+    erro = None
+
+    if request.method == "POST":
+        form = {campo: request.form.get(campo, "").strip() for campo in form}
+        enviados = zip(request.form.getlist("item"), request.form.getlist("valor_item"))
+        linhas = [{"item": i, "valor": v.strip()} for i, v in enviados] or linhas
+
+        # 1) itens: ignora linhas totalmente em branco, valida as outras
+        itens = []
+        for linha in linhas:
+            if not linha["item"] and not linha["valor"]:
+                continue
+            opcao = por_valor.get(linha["item"])
+            try:
+                valor = reais_para_centavos(linha["valor"])
+            except ValueError:
+                valor = None
+            if opcao is None or valor is None:
+                erro = "Cada item precisa de um serviço e de um valor válido, como 90,00."
+                break
+            itens.append((opcao["categoria_id"], opcao["servico_id"], valor))
+        if not erro and not itens:
+            erro = "Adicione pelo menos um item."
+
+        # 2) total e quanto caiu na conta (vazio = igual ao total)
+        total = sum(item[2] for item in itens)
+        recebido = total
+        if not erro and form["recebido"]:
+            try:
+                recebido = reais_para_centavos(form["recebido"])
+            except ValueError:
+                erro = "Informe um valor válido em \"Quanto caiu na conta\", como 85,50."
+            else:
+                if recebido > total:
+                    erro = "O valor que caiu na conta não pode ser maior que o total dos itens."
+
+        # 3) forma de pagamento e data
+        if not erro and form["forma_pagamento"] not in dict(FORMAS_PAGAMENTO):
+            erro = "Escolha a forma de pagamento."
+        if not erro:
+            try:
+                data_atendimento = date.fromisoformat(form["data"])
+            except ValueError:
+                erro = "Informe uma data válida."
+
+        # 4) salva tudo junto: ou grava o atendimento com todos os itens, ou nada
+        if not erro:
+            with db:
+                cursor = db.execute(
+                    "INSERT INTO atendimentos "
+                    "(data, cliente, forma_pagamento, recebido_centavos, agendado_por, descricao) "
+                    "VALUES (?, ?, ?, ?, ?, ?)",
+                    (
+                        data_atendimento.isoformat(), form["cliente"] or None,
+                        form["forma_pagamento"], recebido,
+                        form["agendado_por"] or None, form["descricao"] or None,
+                    ),
+                )
+                db.executemany(
+                    "INSERT INTO itens_atendimento "
+                    "(atendimento_id, categoria_id, servico_id, valor_centavos) "
+                    "VALUES (?, ?, ?, ?)",
+                    [(cursor.lastrowid, *item) for item in itens],
+                )
+            return redirect(url_for("atendimentos"))
+
+    return render_template(
+        "atendimento_novo.html", form=form, linhas=linhas, opcoes=opcoes,
+        pessoas=pessoas, formas=FORMAS_PAGAMENTO, erro=erro,
+    )

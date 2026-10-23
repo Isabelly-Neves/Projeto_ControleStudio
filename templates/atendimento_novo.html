@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+{% block titulo %}Furo Delicado: lançar atendimento{% endblock %}
+
+{# Uma linha de item (serviço + valor). Usada nas linhas existentes e no modelo para "Adicionar item". #}
+{% macro linha_item(escolhido, valor) %}
+  <div class="item">
+    <select name="item" aria-label="Serviço">
+      <option value="">Escolha...</option>
+      {% for o in opcoes %}
+        <option value="{{ o.valor }}" {% if escolhido == o.valor %}selected{% endif %}>{{ o.rotulo }}</option>
+      {% endfor %}
+    </select>
+    <input type="text" name="valor_item" inputmode="decimal" placeholder="90,00" value="{{ valor }}" aria-label="Valor do item">
+    <button type="button" class="botao-secundario remover" aria-label="Remover item">×</button>
+  </div>
+{% endmacro %}
+
+{% block conteudo %}
+  <h1>Lançar atendimento</h1>
+  {% if erro %}<p class="erro">{{ erro }}</p>{% endif %}
+  <form method="post">
+    <label for="data">Data</label>
+    <input type="date" id="data" name="data" value="{{ form.data }}" required>
+
+    <label for="cliente">Cliente (opcional)</label>
+    <input type="text" id="cliente" name="cliente" value="{{ form.cliente }}">
+
+    <div class="cabecalho-itens"><span>Serviço</span><span>Valor (R$)</span><span></span></div>
+    <div id="itens">
+      {% for l in linhas %}{{ linha_item(l.item, l.valor) }}{% endfor %}
+    </div>
+    <template id="modelo-item">{{ linha_item("", "") }}</template>
+    <p><button type="button" id="adicionar" class="botao-secundario">Adicionar item</button></p>
+
+    <label for="forma_pagamento">Forma de pagamento</label>
+    <select id="forma_pagamento" name="forma_pagamento">
+      {% for valor, nome in formas %}
+        <option value="{{ valor }}" {% if form.forma_pagamento == valor %}selected{% endif %}>{{ nome }}</option>
+      {% endfor %}
+    </select>
+
+    <label for="recebido">Quanto caiu na conta (R$)</label>
+    <input type="text" id="recebido" name="recebido" inputmode="decimal" placeholder="Deixe vazio se for igual ao total" value="{{ form.recebido }}">
+
+    <label for="agendado_por">Agendado por (opcional)</label>
+    <input type="text" id="agendado_por" name="agendado_por" list="pessoas" value="{{ form.agendado_por }}">
+    <datalist id="pessoas">{% for p in pessoas %}<option value="{{ p }}">{% endfor %}</datalist>
+
+    <label for="descricao">Observação (opcional)</label>
+    <input type="text" id="descricao" name="descricao" value="{{ form.descricao }}">
+
+    <p><button class="botao" type="submit">Salvar atendimento</button></p>
+  </form>
+
+  <script>
+    const itens = document.getElementById("itens");
+    const modelo = document.getElementById("modelo-item");
+
+    document.getElementById("adicionar").addEventListener("click", () => {
+      itens.appendChild(modelo.content.cloneNode(true));
+    });
+
+    itens.addEventListener("click", (evento) => {
+      if (evento.target.classList.contains("remover") && itens.children.length > 1) {
+        evento.target.closest(".item").remove();
+      }
+    });
+  </script>
+{% endblock %}
