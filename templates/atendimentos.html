@@ -2,7 +2,7 @@
 {% block titulo %}Furo Delicado: atendimentos{% endblock %}
 {% block conteudo %}
   <h1>Atendimentos</h1>
-  <p><a class="botao" href="{{ url_for('atendimento_novo') }}">Lançar atendimento</a></p>
+  <p><a class="botao" href="{{ url_for('atendimento_form') }}">Lançar atendimento</a></p>
   {% for a in atendimentos %}
     <div class="linha">
       <div>
@@ -20,6 +20,7 @@
         {% if a.total != a.recebido_centavos %}
           <div class="discreto">de {{ a.total | brl }}</div>
         {% endif %}
+        <div><a class="discreto" href="{{ url_for('atendimento_form', atendimento_id=a.id) }}">Editar</a></div>
       </div>
     </div>
   {% else %}

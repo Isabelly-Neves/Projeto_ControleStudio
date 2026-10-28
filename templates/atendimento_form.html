@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block titulo %}Furo Delicado: lançar atendimento{% endblock %}
+{% block titulo %}Furo Delicado: {{ 'editar' if editando else 'lançar' }} atendimento{% endblock %}
 
 {# Uma linha de item (serviço + valor). Usada nas linhas existentes e no modelo para "Adicionar item". #}
 {% macro linha_item(escolhido, valor) %}
@@ -16,7 +16,7 @@
 {% endmacro %}
 
 {% block conteudo %}
-  <h1>Lançar atendimento</h1>
+  <h1>{{ 'Editar atendimento' if editando else 'Lançar atendimento' }}</h1>
   {% if erro %}<p class="erro">{{ erro }}</p>{% endif %}
   <form method="post">
     <label for="data">Data</label>
@@ -49,8 +49,18 @@
     <label for="descricao">Observação (opcional)</label>
     <input type="text" id="descricao" name="descricao" value="{{ form.descricao }}">
 
-    <p><button class="botao" type="submit">Salvar atendimento</button></p>
+    <p>
+      <button class="botao" type="submit">{{ 'Salvar alterações' if editando else 'Salvar atendimento' }}</button>
+      <a class="botao-secundario" href="{{ url_for('atendimentos') }}">Cancelar</a>
+    </p>
   </form>
+
+  {% if editando %}
+    <form method="post" action="{{ url_for('atendimento_apagar', atendimento_id=atendimento_id) }}"
+          onsubmit="return confirm('Apagar este atendimento e todos os seus itens? Isso não pode ser desfeito.')">
+      <button class="botao-perigo" type="submit">Apagar atendimento</button>
+    </form>
+  {% endif %}
 
   <script>
     const itens = document.getElementById("itens");

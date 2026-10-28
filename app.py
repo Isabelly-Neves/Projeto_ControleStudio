@@ -2,11 +2,20 @@ import sqlite3
 from datetime import date
 from decimal import Decimal, InvalidOperation
 
-from flask import Flask, g, redirect, render_template, request, url_for
+from flask import Flask, abort, g, redirect, render_template, request, url_for
 
 app = Flask(__name__)
 DATABASE = "studio.db"
 
+FORMAS_PAGAMENTO = [
+    ("pix", "Pix"),
+    ("dinheiro", "Dinheiro"),
+    ("credito", "Cartão de crédito"),
+    ("debito", "Cartão de débito"),
+]
+
+
+# ---------- banco de dados ----------
 
 def get_db():
     """Abre uma conexão por requisição e reaproveita dentro dela."""
@@ -23,6 +32,8 @@ def close_db(error):
     if db is not None:
         db.close()
 
+
+# ---------- formatação e conversão de valores ----------
 
 @app.template_filter("brl")
 def brl(centavos):
@@ -51,6 +62,13 @@ def reais_para_centavos(texto):
     return int((valor * 100).quantize(Decimal(1)))
 
 
+def centavos_para_reais(centavos):
+    """12345 -> '123,45' (para preencher campos de formulário na edição)"""
+    return f"{centavos / 100:.2f}".replace(".", ",")
+
+
+# ---------- resumo ----------
+
 @app.route("/")
 def resumo():
     mes = date.today().strftime("%Y-%m")
@@ -71,6 +89,8 @@ def resumo():
     return render_template("resumo.html", mes=mes, entrou=entrou, saiu=saiu, lucro=entrou - saiu)
 
 
+# ---------- saídas ----------
+
 @app.route("/saidas")
 def saidas():
     linhas = get_db().execute(
@@ -82,7 +102,9 @@ def saidas():
 
 
 @app.route("/saidas/nova", methods=["GET", "POST"])
-def saida_nova():
+@app.route("/saidas/<int:saida_id>/editar", methods=["GET", "POST"])
+def saida_form(saida_id=None):
+    """Mesma tela para criar (sem id) e para editar (com id)."""
     db = get_db()
     categorias = db.execute(
         "SELECT id, nome FROM categorias WHERE tipo = 'saida' ORDER BY nome"
@@ -90,6 +112,16 @@ def saida_nova():
     ids_validos = {str(c["id"]) for c in categorias}
 
     form = {"data": date.today().isoformat(), "categoria_id": "", "valor": "", "descricao": ""}
+    if saida_id is not None:
+        saida = db.execute("SELECT * FROM saidas WHERE id = ?", (saida_id,)).fetchone()
+        if saida is None:
+            abort(404)
+        form = {
+            "data": saida["data"],
+            "categoria_id": str(saida["categoria_id"]),
+            "valor": centavos_para_reais(saida["valor_centavos"]),
+            "descricao": saida["descricao"] or "",
+        }
     erro = None
 
     if request.method == "POST":
@@ -110,24 +142,37 @@ def saida_nova():
                 erro = "Informe uma data válida."
 
         if not erro:
-            db.execute(
-                "INSERT INTO saidas (data, categoria_id, valor_centavos, descricao) "
-                "VALUES (?, ?, ?, ?)",
-                (data_lancamento.isoformat(), int(form["categoria_id"]), valor, form["descricao"] or None),
-            )
+            dados = (data_lancamento.isoformat(), int(form["categoria_id"]), valor, form["descricao"] or None)
+            if saida_id is None:
+                db.execute(
+                    "INSERT INTO saidas (data, categoria_id, valor_centavos, descricao) "
+                    "VALUES (?, ?, ?, ?)",
+                    dados,
+                )
+            else:
+                db.execute(
+                    "UPDATE saidas SET data = ?, categoria_id = ?, valor_centavos = ?, descricao = ? "
+                    "WHERE id = ?",
+                    (*dados, saida_id),
+                )
             db.commit()
             return redirect(url_for("saidas"))
 
-    return render_template("saida_nova.html", categorias=categorias, form=form, erro=erro)
+    return render_template(
+        "saida_form.html", categorias=categorias, form=form, erro=erro,
+        editando=saida_id is not None, saida_id=saida_id,
+    )
 
 
-FORMAS_PAGAMENTO = [
-    ("pix", "Pix"),
-    ("dinheiro", "Dinheiro"),
-    ("credito", "Cartão de crédito"),
-    ("debito", "Cartão de débito"),
-]
+@app.route("/saidas/<int:saida_id>/apagar", methods=["POST"])
+def saida_apagar(saida_id):
+    db = get_db()
+    db.execute("DELETE FROM saidas WHERE id = ?", (saida_id,))
+    db.commit()
+    return redirect(url_for("saidas"))
 
+
+# ---------- atendimentos ----------
 
 def opcoes_de_itens(db):
     """O que pode ser cobrado em um atendimento: cada serviço (com sua categoria)
@@ -177,7 +222,9 @@ def atendimentos():
 
 
 @app.route("/atendimentos/novo", methods=["GET", "POST"])
-def atendimento_novo():
+@app.route("/atendimentos/<int:atendimento_id>/editar", methods=["GET", "POST"])
+def atendimento_form(atendimento_id=None):
+    """Mesma tela para criar (sem id) e para editar (com id)."""
     db = get_db()
     opcoes = opcoes_de_itens(db)
     por_valor = {o["valor"]: o for o in opcoes}
@@ -193,6 +240,32 @@ def atendimento_novo():
         "recebido": "", "agendado_por": "", "descricao": "",
     }
     linhas = [{"item": "", "valor": ""}]
+
+    if atendimento_id is not None:
+        a = db.execute("SELECT * FROM atendimentos WHERE id = ?", (atendimento_id,)).fetchone()
+        if a is None:
+            abort(404)
+        salvos = db.execute(
+            "SELECT categoria_id, servico_id, valor_centavos FROM itens_atendimento "
+            "WHERE atendimento_id = ? ORDER BY id",
+            (atendimento_id,),
+        ).fetchall()
+        total_salvo = sum(i["valor_centavos"] for i in salvos)
+        form = {
+            "data": a["data"],
+            "cliente": a["cliente"] or "",
+            "forma_pagamento": a["forma_pagamento"],
+            "recebido": "" if a["recebido_centavos"] == total_salvo else centavos_para_reais(a["recebido_centavos"]),
+            "agendado_por": a["agendado_por"] or "",
+            "descricao": a["descricao"] or "",
+        }
+        linhas = [
+            {
+                "item": f"s:{i['servico_id']}" if i["servico_id"] else f"c:{i['categoria_id']}",
+                "valor": centavos_para_reais(i["valor_centavos"]),
+            }
+            for i in salvos
+        ]
     erro = None
 
     if request.method == "POST":
@@ -240,26 +313,48 @@ def atendimento_novo():
 
         # 4) salva tudo junto: ou grava o atendimento com todos os itens, ou nada
         if not erro:
+            dados = (
+                data_atendimento.isoformat(), form["cliente"] or None,
+                form["forma_pagamento"], recebido,
+                form["agendado_por"] or None, form["descricao"] or None,
+            )
             with db:
-                cursor = db.execute(
-                    "INSERT INTO atendimentos "
-                    "(data, cliente, forma_pagamento, recebido_centavos, agendado_por, descricao) "
-                    "VALUES (?, ?, ?, ?, ?, ?)",
-                    (
-                        data_atendimento.isoformat(), form["cliente"] or None,
-                        form["forma_pagamento"], recebido,
-                        form["agendado_por"] or None, form["descricao"] or None,
-                    ),
-                )
+                if atendimento_id is None:
+                    cursor = db.execute(
+                        "INSERT INTO atendimentos "
+                        "(data, cliente, forma_pagamento, recebido_centavos, agendado_por, descricao) "
+                        "VALUES (?, ?, ?, ?, ?, ?)",
+                        dados,
+                    )
+                    id_salvo = cursor.lastrowid
+                else:
+                    db.execute(
+                        "UPDATE atendimentos SET data = ?, cliente = ?, forma_pagamento = ?, "
+                        "recebido_centavos = ?, agendado_por = ?, descricao = ? WHERE id = ?",
+                        (*dados, atendimento_id),
+                    )
+                    # na edição, os itens antigos são trocados pelos novos
+                    db.execute("DELETE FROM itens_atendimento WHERE atendimento_id = ?", (atendimento_id,))
+                    id_salvo = atendimento_id
                 db.executemany(
                     "INSERT INTO itens_atendimento "
                     "(atendimento_id, categoria_id, servico_id, valor_centavos) "
                     "VALUES (?, ?, ?, ?)",
-                    [(cursor.lastrowid, *item) for item in itens],
+                    [(id_salvo, *item) for item in itens],
                 )
             return redirect(url_for("atendimentos"))
 
     return render_template(
-        "atendimento_novo.html", form=form, linhas=linhas, opcoes=opcoes,
+        "atendimento_form.html", form=form, linhas=linhas, opcoes=opcoes,
         pessoas=pessoas, formas=FORMAS_PAGAMENTO, erro=erro,
+        editando=atendimento_id is not None, atendimento_id=atendimento_id,
     )
+
+
+@app.route("/atendimentos/<int:atendimento_id>/apagar", methods=["POST"])
+def atendimento_apagar(atendimento_id):
+    db = get_db()
+    # os itens somem junto (ON DELETE CASCADE no schema)
+    db.execute("DELETE FROM atendimentos WHERE id = ?", (atendimento_id,))
+    db.commit()
+    return redirect(url_for("atendimentos"))

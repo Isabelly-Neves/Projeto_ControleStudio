@@ -2,14 +2,17 @@
 {% block titulo %}Furo Delicado: saídas{% endblock %}
 {% block conteudo %}
   <h1>Saídas</h1>
-  <p><a class="botao" href="{{ url_for('saida_nova') }}">Lançar saída</a></p>
+  <p><a class="botao" href="{{ url_for('saida_form') }}">Lançar saída</a></p>
   {% for s in saidas %}
     <div class="linha">
       <div>
         {{ s.categoria }}
         <div class="discreto">{{ s.data | data_br }}{% if s.descricao %} · {{ s.descricao }}{% endif %}</div>
       </div>
-      <span class="valor">{{ s.valor_centavos | brl }}</span>
+      <div style="text-align: right">
+        <span class="valor">{{ s.valor_centavos | brl }}</span>
+        <div><a class="discreto" href="{{ url_for('saida_form', saida_id=s.id) }}">Editar</a></div>
+      </div>
     </div>
   {% else %}
     <p class="discreto">Nenhuma saída lançada ainda. Use o botão acima para registrar a primeira.</p>
