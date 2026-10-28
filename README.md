@@ -23,10 +23,10 @@ Também mapeei como o negócio funciona, e isso moldou o sistema:
 
 - [x] Resumo do mês: quanto entrou, quanto saiu e lucro
 - [x] Lançamento e listagem de saídas por categoria
-- [ ] Lançamento de atendimentos com vários itens (várias perfurações, joia, etc.)
-- [ ] Editar e apagar lançamentos
-- [ ] Faturamento por categoria e por tipo de serviço
-- [ ] Login com senha
+- [x] Lançamento de atendimentos com vários itens (várias perfurações, joia, etc.)
+- [x] Editar e apagar lançamentos
+- [x] Faturamento por categoria e por tipo de serviço
+- [x] Login com senha
 - [ ] Hospedagem online, para acesso pelo celular
 - [ ] Cadastro de serviços e categorias pelo próprio site
 - [ ] Despesas fixas recorrentes
@@ -53,7 +53,7 @@ Também mapeei como o negócio funciona, e isso moldou o sistema:
 Como o sistema guarda dados financeiros reais, o acesso é protegido:
 
 - **Login obrigatório** em todas as páginas; a senha é guardada apenas como hash (scrypt, via Werkzeug).
-- **Proteção contra tentativas em massa:** a conta é bloqueada por 15 minutos após 5 senhas erradas.
+- **Proteção contra tentativas em massa:** a conta é bloqueada após 5 senhas erradas por 15 minutos.
 - **Proteção CSRF** em todos os formulários (token por sessão).
 - **Cookie de sessão** com `HttpOnly`, `SameSite=Lax` e `Secure` em produção (HTTPS).
 - **Cabeçalhos de segurança** e `Cache-Control: no-store`, para o navegador não guardar cópia dos dados.
@@ -62,17 +62,6 @@ Como o sistema guarda dados financeiros reais, o acesso é protegido:
 
 Possíveis melhorias: Content-Security-Policy, autenticação em dois fatores e backups automáticos.
 
-## Modelo de dados
-
-```mermaid
-erDiagram
-    categorias ||--o{ servicos : "detalha"
-    categorias ||--o{ itens_atendimento : "classifica"
-    categorias ||--o{ saidas : "classifica"
-    servicos ||--o{ itens_atendimento : "tipo de serviço"
-    atendimentos ||--|{ itens_atendimento : "contém"
-    eventos ||--o{ atendimentos : "ocorreu em"
-```
 
 ## Como rodar
 
