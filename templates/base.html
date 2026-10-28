@@ -19,6 +19,13 @@
     .botao-secundario { padding: .6rem .9rem; border: 1px solid #8886; border-radius: .5rem; background: transparent; color: inherit; font-size: 1rem; cursor: pointer; }
     .botao-secundario { text-decoration: none; display: inline-block; }
     .botao-perigo { padding: .6rem .9rem; border: 1px solid #c53030; border-radius: .5rem; background: transparent; color: #c53030; font-size: 1rem; cursor: pointer; margin-top: 1rem; }
+    h2 { font-size: 1.1rem; margin: 1.5rem 0 .25rem; }
+    .mes-nav { display: flex; justify-content: space-between; align-items: center; margin-bottom: .75rem; }
+    .mes-nav a { color: inherit; font-size: 1.4rem; text-decoration: none; padding: 0 .5rem; }
+    .servico { padding: .6rem 0; border-bottom: 1px solid #8884; }
+    .servico-topo { display: flex; justify-content: space-between; gap: 1rem; }
+    .barra-fundo { height: .4rem; margin-top: .4rem; border-radius: .2rem; background: #8883; }
+    .barra { height: 100%; border-radius: .2rem; background: #2b6cb0; }
     .item { display: grid; grid-template-columns: 1fr 6.5rem auto; gap: .5rem; margin-top: .5rem; }
     .item input, .item select { margin-top: 0; }
     .cabecalho-itens { display: grid; grid-template-columns: 1fr 6.5rem auto; gap: .5rem; margin-top: 1rem; font-weight: 600; }
@@ -31,6 +38,7 @@
     <a href="{{ url_for('resumo') }}">Resumo</a>
     <a href="{{ url_for('atendimentos') }}">Atendimentos</a>
     <a href="{{ url_for('saidas') }}">Saídas</a>
+    <a href="{{ url_for('faturamento') }}">Faturamento</a>
   </nav>
   {% block conteudo %}{% endblock %}
 </body>

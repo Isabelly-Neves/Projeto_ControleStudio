@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block titulo %}Furo Delicado: faturamento{% endblock %}
+{% block conteudo %}
+  <h1>Faturamento por serviço</h1>
+
+  <div class="mes-nav">
+    <a href="{{ url_for('faturamento', mes=anterior) }}" aria-label="Mês anterior">←</a>
+    <strong>{{ titulo_mes }}</strong>
+    {% if tem_proximo %}
+      <a href="{{ url_for('faturamento', mes=proximo) }}" aria-label="Próximo mês">→</a>
+    {% else %}
+      <span></span>
+    {% endif %}
+  </div>
+
+  {% if servicos %}
+    <div class="linha"><span class="discreto">Total faturado</span><span class="valor">{{ total | brl }}</span></div>
+
+    <h2>Por categoria</h2>
+    {% for nome, valor in categorias %}
+      <div class="linha"><span>{{ nome }}</span><span class="valor">{{ valor | brl }}</span></div>
+    {% endfor %}
+
+    <h2>Por serviço</h2>
+    {% for s in servicos %}
+      <div class="servico">
+        <div class="servico-topo">
+          <div>
+            {{ s.nome }}
+            <div class="discreto">{{ s.quantidade }} {{ 'vez' if s.quantidade == 1 else 'vezes' }} · {{ s.pct }}% do total</div>
+          </div>
+          <span class="valor">{{ s.total | brl }}</span>
+        </div>
+        <div class="barra-fundo"><div class="barra" style="width: {{ s.pct }}%"></div></div>
+      </div>
+    {% endfor %}
+
+    <p class="discreto">Valores cobrados dos clientes, antes da taxa da maquininha e sem descontar os custos (material, joias).</p>
+  {% else %}
+    <p class="discreto">Nenhum atendimento lançado neste mês.</p>
+  {% endif %}
+{% endblock %}

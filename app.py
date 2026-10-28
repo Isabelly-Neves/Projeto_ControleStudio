@@ -1,11 +1,16 @@
 import sqlite3
-from datetime import date
+from datetime import date, timedelta
 from decimal import Decimal, InvalidOperation
 
 from flask import Flask, abort, g, redirect, render_template, request, url_for
 
 app = Flask(__name__)
 DATABASE = "studio.db"
+
+MESES = [
+    "janeiro", "fevereiro", "março", "abril", "maio", "junho",
+    "julho", "agosto", "setembro", "outubro", "novembro", "dezembro",
+]
 
 FORMAS_PAGAMENTO = [
     ("pix", "Pix"),
@@ -358,3 +363,50 @@ def atendimento_apagar(atendimento_id):
     db.execute("DELETE FROM atendimentos WHERE id = ?", (atendimento_id,))
     db.commit()
     return redirect(url_for("atendimentos"))
+
+
+# ---------- faturamento por serviço ----------
+
+@app.route("/faturamento")
+def faturamento():
+    hoje = date.today()
+    try:
+        primeiro = date.fromisoformat(request.args.get("mes", "") + "-01")
+    except ValueError:
+        primeiro = hoje.replace(day=1)
+    mes = primeiro.strftime("%Y-%m")
+    anterior = (primeiro - timedelta(days=1)).strftime("%Y-%m")
+    proximo = (primeiro + timedelta(days=32)).strftime("%Y-%m")
+
+    linhas = get_db().execute(
+        "SELECT COALESCE(s.nome, c.nome) AS nome, c.nome AS categoria, "
+        "       COUNT(*) AS quantidade, SUM(i.valor_centavos) AS total "
+        "FROM itens_atendimento i "
+        "JOIN atendimentos a ON a.id = i.atendimento_id "
+        "JOIN categorias c ON c.id = i.categoria_id "
+        "LEFT JOIN servicos s ON s.id = i.servico_id "
+        "WHERE strftime('%Y-%m', a.data) = ? "
+        "GROUP BY i.categoria_id, i.servico_id "
+        "ORDER BY total DESC, nome",
+        (mes,),
+    ).fetchall()
+
+    total = sum(linha["total"] for linha in linhas)
+    servicos = [
+        {
+            "nome": l["nome"], "quantidade": l["quantidade"], "total": l["total"],
+            "pct": round(l["total"] * 100 / total),
+        }
+        for l in linhas
+    ]
+
+    por_categoria = {}
+    for l in linhas:
+        por_categoria[l["categoria"]] = por_categoria.get(l["categoria"], 0) + l["total"]
+    categorias = sorted(por_categoria.items(), key=lambda par: par[1], reverse=True)
+
+    return render_template(
+        "faturamento.html", titulo_mes=f"{MESES[primeiro.month - 1].capitalize()} de {primeiro.year}",
+        anterior=anterior, proximo=proximo, tem_proximo=primeiro < hoje.replace(day=1),
+        total=total, servicos=servicos, categorias=categorias,
+    )
