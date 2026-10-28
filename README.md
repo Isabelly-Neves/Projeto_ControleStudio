@@ -25,7 +25,7 @@ Também mapeei como o negócio funciona, e isso moldou o sistema:
 - [x] Lançamento e listagem de saídas por categoria
 - [x] Lançamento de atendimentos com vários itens (várias perfurações, joia, etc.)
 - [x] Editar e apagar lançamentos
-- [ ] Faturamento por categoria e por tipo de serviço
+- [x] Faturamento por categoria e por tipo de serviço
 - [ ] Login com senha
 - [ ] Hospedagem online, para acesso pelo celular
 - [ ] Cadastro de serviços e categorias pelo próprio site
