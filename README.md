@@ -24,7 +24,7 @@ Também mapeei como o negócio funciona, e isso moldou o sistema:
 - [x] Resumo do mês: quanto entrou, quanto saiu e lucro
 - [x] Lançamento e listagem de saídas por categoria
 - [x] Lançamento de atendimentos com vários itens (várias perfurações, joia, etc.)
-- [ ] Editar e apagar lançamentos
+- [x] Editar e apagar lançamentos
 - [ ] Faturamento por categoria e por tipo de serviço
 - [ ] Login com senha
 - [ ] Hospedagem online, para acesso pelo celular
