@@ -19,6 +19,7 @@
   <h1>{{ 'Editar atendimento' if editando else 'Lançar atendimento' }}</h1>
   {% if erro %}<p class="erro">{{ erro }}</p>{% endif %}
   <form method="post">
+    {{ csrf_input() }}
     <label for="data">Data</label>
     <input type="date" id="data" name="data" value="{{ form.data }}" required>
 
@@ -58,6 +59,7 @@
   {% if editando %}
     <form method="post" action="{{ url_for('atendimento_apagar', atendimento_id=atendimento_id) }}"
           onsubmit="return confirm('Apagar este atendimento e todos os seus itens? Isso não pode ser desfeito.')">
+      {{ csrf_input() }}
       <button class="botao-perigo" type="submit">Apagar atendimento</button>
     </form>
   {% endif %}

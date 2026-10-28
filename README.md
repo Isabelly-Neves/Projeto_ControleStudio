@@ -1,15 +1,15 @@
-# Controle financeiro para um studio de perfuração
+# Furo Delicado: controle financeiro para um studio de perfuração
 
-Aplicação web para controlar entradas, saídas e lucro de um studio de perfuração, feita para ser usada pelo celular. O projeto nasceu de uma necessidade real: a dona do studio controlava as finanças em um caderno, com pouca precisão e difícil acesso.
+Aplicação web para controlar entradas, saídas e lucro de um studio de perfuração corporal, feita para ser usada pelo celular. O projeto nasceu de uma necessidade real: a dona do studio controlava as finanças em um caderno, com pouca precisão e difícil acesso.
 
 > **Status:** em desenvolvimento.
 
 ## O problema
 
-Levantei os requisitos em conversa com a cliente. As principais reclamações eram:
+Levantei os requisitos em conversa com a cliente. As principais dores eram:
 
 - anotações no caderno, feitas só quando dava, com imprecisão;
-- dificuldade de consultar rapidamente quanto entrou, quanto saiu e qual o lucro;
+- dificuldade de consultar quanto entrou, quanto saiu e qual o lucro;
 - falta de visibilidade sobre quais serviços dão mais retorno.
 
 Também mapeei como o negócio funciona, e isso moldou o sistema:
@@ -23,9 +23,9 @@ Também mapeei como o negócio funciona, e isso moldou o sistema:
 
 - [x] Resumo do mês: quanto entrou, quanto saiu e lucro
 - [x] Lançamento e listagem de saídas por categoria
-- [x] Lançamento de atendimentos com vários itens (várias perfurações, joia, etc.)
-- [x] Editar e apagar lançamentos
-- [x] Faturamento por categoria e por tipo de serviço
+- [ ] Lançamento de atendimentos com vários itens (várias perfurações, joia, etc.)
+- [ ] Editar e apagar lançamentos
+- [ ] Faturamento por categoria e por tipo de serviço
 - [ ] Login com senha
 - [ ] Hospedagem online, para acesso pelo celular
 - [ ] Cadastro de serviços e categorias pelo próprio site
@@ -47,6 +47,20 @@ Também mapeei como o negócio funciona, e isso moldou o sistema:
 - **Taxa da maquininha calculada por diferença.** Registro quanto o cliente pagou e quanto caiu na conta. O lucro usa sempre o valor realmente recebido.
 - **Validação no servidor** e **consultas SQL parametrizadas**, para evitar dados inválidos e SQL injection.
 - **Redirect após o POST**, para que atualizar a página não duplique um lançamento.
+
+## Segurança
+
+Como o sistema guarda dados financeiros reais, o acesso é protegido:
+
+- **Login obrigatório** em todas as páginas; a senha é guardada apenas como hash (scrypt, via Werkzeug).
+- **Proteção contra tentativas em massa:** a conta é bloqueada por 15 minutos após 5 senhas erradas.
+- **Proteção CSRF** em todos os formulários (token por sessão).
+- **Cookie de sessão** com `HttpOnly`, `SameSite=Lax` e `Secure` em produção (HTTPS).
+- **Cabeçalhos de segurança** e `Cache-Control: no-store`, para o navegador não guardar cópia dos dados.
+- **Segredos fora do repositório:** chave da sessão e banco de dados ficam no `.gitignore`.
+- Ações que alteram dados (salvar, apagar, sair) só aceitam POST.
+
+Possíveis melhorias: Content-Security-Policy, autenticação em dois fatores e backups automáticos.
 
 ## Modelo de dados
 
@@ -73,6 +87,7 @@ venv\Scripts\activate
 pip install -r requirements.txt
 
 python init_db.py
+python criar_usuario.py
 flask --app app run --debug
 ```
 
@@ -88,6 +103,7 @@ O arquivo `studio.db` é criado localmente pelo `init_db.py` e **não é version
 .
 ├── app.py               # rotas e regras da aplicação (Flask)
 ├── init_db.py           # cria o banco e as categorias iniciais
+├── criar_usuario.py     # cria o usuário de acesso (senha digitada no terminal)
 ├── schema.sql           # definição das tabelas
 ├── requirements.txt
 └── templates/           # páginas HTML (base, resumo, saídas)
@@ -95,5 +111,5 @@ O arquivo `studio.db` é criado localmente pelo `init_db.py` e **não é version
 
 ## Autora
 
-**Isabelly Neves**, estudante de Ciência da Computação.
-[LinkedIn](https://www.linkedin.com/in/isabelly-neves/?lipi=urn%3Ali%3Apage%3Ad_flagship3_profile_view_base_contact_details%3BSibWNNltSE6bdxFWdkvmQQ%3D%3D) 
+**[Seu nome]**, estudante de Ciência da Computação.
+[LinkedIn](https://www.linkedin.com/) · [GitHub](https://github.com/)

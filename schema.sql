@@ -47,3 +47,12 @@ CREATE TABLE IF NOT EXISTS saidas (
     valor_centavos INTEGER NOT NULL,
     descricao      TEXT
 );
+
+-- Quem pode entrar no sistema (a senha é guardada só como hash, nunca em texto)
+CREATE TABLE IF NOT EXISTS usuarios (
+    id                INTEGER PRIMARY KEY AUTOINCREMENT,
+    nome              TEXT NOT NULL UNIQUE,
+    senha_hash        TEXT NOT NULL,
+    tentativas_falhas INTEGER NOT NULL DEFAULT 0,
+    bloqueado_ate     TEXT
+);

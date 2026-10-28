@@ -7,8 +7,10 @@
   <style>
     :root { color-scheme: light dark; }
     body { font-family: system-ui, sans-serif; max-width: 28rem; margin: 0 auto; padding: 1rem; line-height: 1.5; }
-    nav { display: flex; gap: 1.25rem; padding-bottom: .75rem; margin-bottom: 1.25rem; border-bottom: 1px solid #8886; }
+    nav { display: flex; flex-wrap: wrap; gap: .5rem 1.25rem; padding-bottom: .75rem; margin-bottom: 1.25rem; border-bottom: 1px solid #8886; }
     nav a { color: inherit; font-weight: 600; text-decoration: none; }
+    .sair { margin-left: auto; }
+    .link { padding: 0; border: 0; background: none; color: inherit; font: inherit; font-weight: 600; cursor: pointer; }
     h1 { font-size: 1.4rem; margin: 0 0 1.25rem; }
     .linha { display: flex; justify-content: space-between; gap: 1rem; padding: .75rem 0; border-bottom: 1px solid #8884; }
     .discreto { color: #888; font-size: .9rem; }
@@ -34,12 +36,15 @@
   </style>
 </head>
 <body>
+  {% if session.get('usuario_id') %}
   <nav>
     <a href="{{ url_for('resumo') }}">Resumo</a>
     <a href="{{ url_for('atendimentos') }}">Atendimentos</a>
     <a href="{{ url_for('saidas') }}">Saídas</a>
     <a href="{{ url_for('faturamento') }}">Faturamento</a>
+    <form method="post" action="{{ url_for('logout') }}" class="sair">{{ csrf_input() }}<button type="submit" class="link">Sair</button></form>
   </nav>
+  {% endif %}
   {% block conteudo %}{% endblock %}
 </body>
 </html>

@@ -4,6 +4,7 @@
   <h1>{{ 'Editar saída' if editando else 'Lançar saída' }}</h1>
   {% if erro %}<p class="erro">{{ erro }}</p>{% endif %}
   <form method="post">
+    {{ csrf_input() }}
     <label for="data">Data</label>
     <input type="date" id="data" name="data" value="{{ form.data }}" required>
 
@@ -30,6 +31,7 @@
   {% if editando %}
     <form method="post" action="{{ url_for('saida_apagar', saida_id=saida_id) }}"
           onsubmit="return confirm('Apagar esta saída? Isso não pode ser desfeito.')">
+      {{ csrf_input() }}
       <button class="botao-perigo" type="submit">Apagar saída</button>
     </form>
   {% endif %}

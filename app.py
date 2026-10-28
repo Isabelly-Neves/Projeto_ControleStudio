@@ -1,11 +1,41 @@
+import hmac
+import os
+import secrets
 import sqlite3
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 from decimal import Decimal, InvalidOperation
+from pathlib import Path
 
-from flask import Flask, abort, g, redirect, render_template, request, url_for
+from flask import Flask, abort, g, redirect, render_template, request, session, url_for
+from markupsafe import Markup
+from werkzeug.security import check_password_hash
+
+DATABASE = "studio.db"
+# No servidor (com HTTPS), defina a variável de ambiente PRODUCAO=1
+PRODUCAO = os.environ.get("PRODUCAO") == "1"
+
+
+def carregar_chave_secreta():
+    """A chave que assina o cookie de sessão. Nunca vai para o GitHub."""
+    chave = os.environ.get("SECRET_KEY")
+    if chave:
+        return chave
+    arquivo = Path("secret_key.txt")
+    if not arquivo.exists():
+        arquivo.write_text(secrets.token_hex(32))
+    return arquivo.read_text().strip()
+
 
 app = Flask(__name__)
-DATABASE = "studio.db"
+app.secret_key = carregar_chave_secreta()
+app.config.update(
+    SESSION_COOKIE_HTTPONLY=True,       # JavaScript não consegue ler o cookie
+    SESSION_COOKIE_SAMESITE="Lax",      # o cookie não vai em requisições de outros sites
+    SESSION_COOKIE_SECURE=PRODUCAO,     # em produção, só trafega por HTTPS
+    PERMANENT_SESSION_LIFETIME=timedelta(days=30),  # ela não precisa digitar a senha todo dia
+)
+MAX_FALHAS = 5
+MINUTOS_BLOQUEIO = 15
 
 MESES = [
     "janeiro", "fevereiro", "março", "abril", "maio", "junho",
@@ -36,6 +66,90 @@ def close_db(error):
     db = g.pop("db", None)
     if db is not None:
         db.close()
+
+
+# ---------- segurança: CSRF, login obrigatório e cabeçalhos ----------
+
+def token_csrf():
+    if "csrf" not in session:
+        session["csrf"] = secrets.token_hex(16)
+    return session["csrf"]
+
+
+@app.context_processor
+def injetar_csrf():
+    # nos templates: {{ csrf_input() }} dentro de todo <form method="post">
+    return {"csrf_input": lambda: Markup(f'<input type="hidden" name="csrf" value="{token_csrf()}">')}
+
+
+@app.before_request
+def verificar_csrf():
+    """Todo POST precisa trazer o token da sessão (impede que outro site faça POST por ela)."""
+    if request.method == "POST":
+        enviado = request.form.get("csrf", "").encode()
+        esperado = session.get("csrf", "").encode()
+        if not esperado or not hmac.compare_digest(enviado, esperado):
+            abort(400)
+
+
+@app.before_request
+def exigir_login():
+    if request.endpoint in (None, "login", "static"):
+        return
+    if "usuario_id" not in session:
+        return redirect(url_for("login"))
+
+
+@app.after_request
+def cabecalhos_de_seguranca(resposta):
+    resposta.headers["X-Content-Type-Options"] = "nosniff"
+    resposta.headers["X-Frame-Options"] = "DENY"
+    resposta.headers["Referrer-Policy"] = "same-origin"
+    resposta.headers["Cache-Control"] = "no-store"   # o navegador não guarda cópia dos dados financeiros
+    if PRODUCAO:
+        resposta.headers["Strict-Transport-Security"] = "max-age=31536000"
+    return resposta
+
+
+@app.route("/login", methods=["GET", "POST"])
+def login():
+    erro = None
+    if request.method == "POST":
+        db = get_db()
+        nome = request.form.get("usuario", "").strip()
+        senha = request.form.get("senha", "")
+        usuario = db.execute("SELECT * FROM usuarios WHERE nome = ?", (nome,)).fetchone()
+        agora = datetime.now()
+
+        if usuario and usuario["bloqueado_ate"] and datetime.fromisoformat(usuario["bloqueado_ate"]) > agora:
+            erro = "Muitas tentativas erradas. Aguarde alguns minutos e tente de novo."
+        elif usuario and check_password_hash(usuario["senha_hash"], senha):
+            db.execute("UPDATE usuarios SET tentativas_falhas = 0, bloqueado_ate = NULL WHERE id = ?", (usuario["id"],))
+            db.commit()
+            session.clear()                      # sessão nova depois do login
+            session["usuario_id"] = usuario["id"]
+            session.permanent = True
+            return redirect(url_for("resumo"))
+        else:
+            erro = "Usuário ou senha incorretos."
+            if usuario:
+                falhas = usuario["tentativas_falhas"] + 1
+                bloqueado_ate = None
+                if falhas >= MAX_FALHAS:
+                    bloqueado_ate = (agora + timedelta(minutes=MINUTOS_BLOQUEIO)).isoformat()
+                    falhas = 0
+                db.execute(
+                    "UPDATE usuarios SET tentativas_falhas = ?, bloqueado_ate = ? WHERE id = ?",
+                    (falhas, bloqueado_ate, usuario["id"]),
+                )
+                db.commit()
+    return render_template("login.html", erro=erro)
+
+
+@app.route("/logout", methods=["POST"])
+def logout():
+    session.clear()
+    return redirect(url_for("login"))
 
 
 # ---------- formatação e conversão de valores ----------
